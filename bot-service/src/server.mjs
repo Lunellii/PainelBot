@@ -411,6 +411,10 @@ async function joinRankup(account, state, attempt = 0) {
     state.activity = "entrando no RankUP";
     console.log(`[${account.username}] RankUP selecionado no slot ${rankupSlot}`);
     await sleep(8000);
+    // Permanece parado no spawn depois de entrar no RankUP, aguardando o painel.
+    bot.deactivateItem();
+    bot.clearControlStates();
+    if (typeof bot.stopDigging === "function") bot.stopDigging();
     state.rankupReady = true;
     state.location = "rankup";
     state.activity = "aguardando comandos";
@@ -439,10 +443,17 @@ async function startFishing(account, state) {
   state.lastError = null;
   try {
     const serverConfig = await loadServerConfig();
-    bot.chat(serverConfig.fishCommand);
+    let rod = bot.inventory.items().find((item) => item.name === "fishing_rod");
+    if (!rod) {
+      state.activity = "vara ausente: preparando kit iniciante";
+      await runStarterKit(account, state);
+      rod = bot.inventory.items().find((item) => item.name === "fishing_rod");
+      if (!rod) throw new Error("O /kit iniciante não entregou uma vara de pesca.");
+    }
+    bot.chat(String(serverConfig.fishCommand || "/pescar").trim() || "/pescar");
     await sleep(5000);
-    const rod = bot.inventory.items().find((item) => item.name === "fishing_rod");
-    if (!rod) throw new Error("A conta está sem vara de pesca. Use 'Ir ao meu plot' e entregue uma vara.");
+    rod = bot.inventory.items().find((item) => item.name === "fishing_rod");
+    if (!rod) throw new Error("A vara desapareceu antes de iniciar a pesca.");
     if (rod.slot >= 36 && rod.slot <= 44) bot.setQuickBarSlot(rod.slot - 36);
     else await bot.equip(rod, "hand");
     await sleep(300);
