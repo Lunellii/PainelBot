@@ -203,7 +203,7 @@ async function connect(account) {
   if (current?.bot) return publicState(account);
   const allowedLocalAccount = account.allowLocal === true || /^vulkspesca(?:0[2-9])?$/i.test(account.username);
   if (!account.proxyId && (requireProxy || !allowedLocalAccount)) throw new Error(`Conexão local bloqueada para ${account.username}. Esta conta precisa de proxy.`);
-  const state = { bot: null, status: "conectando", activity: "conectando", location: "lobby", registrationBlocked: false, fishing: false, automationRunning: false, automationPromise: null, rankupReady: false, fishBalance: Number(account.fishBalance) || 0, balanceUpdatedAt: account.balanceUpdatedAt || null, balanceRequestedAt: 0, balancePending: false, balanceTimeout: null, balanceRefreshTimer: null, balanceError: null, market: [], messages: [], balanceTimer: null, authTimer: null, authenticated: false, lastError: null, lastMessage: null, lastMessageAt: null, connectedAt: null, authAttempts: 0, lastAuthAt: 0, joinTimer: null };
+  const state = { bot: null, status: "conectando", activity: "conectando", location: "lobby", registrationBlocked: false, intentionalDisconnect: false, fishing: false, automationRunning: false, automationPromise: null, rankupReady: false, fishBalance: Number(account.fishBalance) || 0, balanceUpdatedAt: account.balanceUpdatedAt || null, balanceRequestedAt: 0, balancePending: false, balanceTimeout: null, balanceRefreshTimer: null, balanceError: null, market: [], messages: [], balanceTimer: null, authTimer: null, authenticated: false, lastError: null, lastMessage: null, lastMessageAt: null, connectedAt: null, authAttempts: 0, lastAuthAt: 0, joinTimer: null };
   bots.set(account.id, state);
   const serverConfig = await loadServerConfig();
   const options = { host: serverConfig.host, port: serverConfig.port, version: serverConfig.version, username: account.username, auth: account.auth || "offline", hideErrors: true };
@@ -301,7 +301,7 @@ async function connect(account) {
   });
   bot.on("kicked", (reason) => { state.lastError = `Expulso: ${String(reason).slice(0, 300)}`; console.error(`[${account.username}] ${state.lastError}`); });
   bot.on("error", (error) => { state.lastError = error.message; console.error(`[${account.username}] ${error.message}`); });
-  bot.once("end", (reason) => { if (state.balanceTimer) clearInterval(state.balanceTimer); if (state.balanceTimeout) clearTimeout(state.balanceTimeout); if (state.balanceRefreshTimer) clearTimeout(state.balanceRefreshTimer); if (state.authTimer) clearTimeout(state.authTimer); if (state.joinTimer) clearTimeout(state.joinTimer); if (!state.lastError && reason) state.lastError = `Conexão encerrada: ${String(reason).slice(0, 200)}`; state.bot = null; state.status = "offline"; state.activity = "parado"; state.location = "offline"; state.fishing = false; state.rankupReady = false; state.balancePending = false; console.log(`[${account.username}] desconectou`); });
+  bot.once("end", (reason) => { if (state.balanceTimer) clearInterval(state.balanceTimer); if (state.balanceTimeout) clearTimeout(state.balanceTimeout); if (state.balanceRefreshTimer) clearTimeout(state.balanceRefreshTimer); if (state.authTimer) clearTimeout(state.authTimer); if (state.joinTimer) clearTimeout(state.joinTimer); const expectedEnd = state.intentionalDisconnect || /Desconectado pelo painel|Repetindo fluxo automático/i.test(String(reason || "")); if (expectedEnd) state.lastError = null; else if (!state.lastError && reason) state.lastError = `Conexão encerrada: ${String(reason).slice(0, 200)}`; state.bot = null; state.status = "offline"; state.activity = "parado"; state.location = "offline"; state.fishing = false; state.rankupReady = false; state.balancePending = false; console.log(`[${account.username}] desconectou`); });
   return publicState(account);
 }
 
@@ -475,6 +475,8 @@ async function runAutomatic(account) {
   const operation = (async () => {
     state = bots.get(account.id);
     if (state?.bot && state.status === "online" && state.activity === "automático com erro" && !state.rankupReady) {
+      state.intentionalDisconnect = true;
+      state.lastError = null;
       state.bot.quit("Repetindo fluxo automático");
       const reconnectDeadline = Date.now() + 5000;
       while (state.bot && Date.now() < reconnectDeadline) await sleep(200);
@@ -783,7 +785,7 @@ const server = createServer(async (request, response) => {
       const bot = state?.bot;
       const serverConfig = await loadServerConfig();
       if (!bot || state.status !== "online") return json(response, 409, { error: "Conta offline" });
-      if (action === "disconnect") { state.fishing = false; bot.quit("Desconectado pelo painel"); }
+      if (action === "disconnect") { state.fishing = false; state.intentionalDisconnect = true; state.lastError = null; bot.quit("Desconectado pelo painel"); }
       if (action === "fish") startFishing(account, state).catch((error) => { state.lastError = error instanceof Error ? error.message : "Falha ao iniciar pesca"; state.activity = "erro: pesca"; });
       if (action === "pause") { state.fishing = false; state.activity = "parado"; bot.deactivateItem(); bot.clearControlStates(); }
       if (action === "plot") { state.fishing = false; state.activity = "indo ao destino"; state.location = "plot"; bot.chat(serverConfig.plotCommand); setTimeout(() => { if (state.activity === "indo ao destino") state.activity = "no destino"; }, 5000); }
