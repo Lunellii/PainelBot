@@ -1,0 +1,4 @@
+[
+  { "id": "principal", "username": "WeAreStarS", "auth": "offline", "serverPassword": "senha-do-login" },
+  { "id": "supra1", "username": "supra1", "auth": "offline", "serverPassword": "outra-senha" }
+]
