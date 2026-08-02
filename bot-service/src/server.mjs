@@ -570,9 +570,10 @@ async function runGroupAutomation(runId) {
     groupAutomation.completedGroups.push(group.label);
     groupAutomation.failedAccounts = [];
     if (index < groups.length - 1) {
-      groupAutomation.nextGroupAt = new Date(Date.now() + 15 * 60 * 1000).toISOString();
+      groupAutomation.nextGroupAt = new Date(Date.now() + 2 * 60 * 1000).toISOString();
+      groupAutomation.message = `${group.label} concluido; proximo grupo em 2 minutos`;
       groupAutomation.message = `${group.label} concluído; próximo grupo em 15 minutos`;
-      await waitGroupDelay(15 * 60 * 1000, runId);
+      await waitGroupDelay(2 * 60 * 1000, runId);
     }
   }
   if (groupAutomation.runId !== runId) return;
