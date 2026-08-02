@@ -573,6 +573,7 @@ async function runGroupAutomation(runId) {
       groupAutomation.nextGroupAt = new Date(Date.now() + 2 * 60 * 1000).toISOString();
       groupAutomation.message = `${group.label} concluido; proximo grupo em 2 minutos`;
       groupAutomation.message = `${group.label} concluído; próximo grupo em 15 minutos`;
+      groupAutomation.message = `${group.label} concluido; proximo grupo em 2 minutos`;
       await waitGroupDelay(2 * 60 * 1000, runId);
     }
   }
