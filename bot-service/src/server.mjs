@@ -662,15 +662,13 @@ async function purchaseToInventory(state, slot, requestedQuantity = 1) {
   const before = countInventoryKey(bot, productKey);
   const quantity = Math.max(1, Math.min(2304, Math.floor(Number(requestedQuantity) || 1)));
   state.activity = "comprando";
-  let purchased = 0;
-  for (let attempt = 0; attempt < quantity; attempt += 1) {
-    if (!bot.currentWindow) break;
-    await bot.clickWindow(slotNumber, 0, 0).catch(() => {});
-    await sleep(220);
-    const current = countInventoryKey(bot, productKey);
-    if (current <= before + purchased) break;
-    purchased += current - before - purchased;
-  }
+  // O mercado abre o campo de quantidade com o botão direito; a confirmação
+  // é feita enviando a quantidade pelo chat.
+  await bot.clickWindow(slotNumber, 1, 0);
+  await sleep(500);
+  bot.chat(String(quantity));
+  await sleep(1800);
+  const purchased = Math.max(0, countInventoryKey(bot, productKey) - before);
   if (bot.currentWindow) bot.closeWindow(bot.currentWindow);
   if (purchased === quantity) state.purchaseNotice = `Compra concluida: ${purchased} unidade(s) no inventario.`;
   else if (purchased > 0) state.purchaseNotice = `Compra parcial: ${purchased}/${quantity} unidade(s). Saldo ou limite insuficiente.`;
