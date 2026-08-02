@@ -183,6 +183,7 @@ function publicState(account) {
     lastMessageAt: state?.lastMessageAt || null,
     chatMessages: state?.messages || [],
     lastError: state?.lastError || null,
+    purchaseNotice: state?.purchaseNotice || null,
     connectedAt: state?.connectedAt || null,
     automationRunning: state?.automationRunning || false,
     registered: account.registered === true,
@@ -628,6 +629,43 @@ async function purchaseAndDeliver(state, slot) {
   state.activity = "entrega concluída";
 }
 
+function countInventoryKey(bot, key) {
+  return bot.inventory.items().filter((item) => `${item.type}:${item.metadata}` === key).reduce((sum, item) => sum + item.count, 0);
+}
+
+async function purchaseToInventory(state, slot, requestedQuantity = 1) {
+  const bot = state.bot;
+  const serverConfig = await loadServerConfig();
+  state.activity = "abrindo mercado";
+  state.purchaseNotice = null;
+  if (!bot.currentWindow || !/mercado|pesca/i.test(bot.currentWindow.title || "")) {
+    bot.chat(serverConfig.marketCommand);
+    await waitForWindow(bot, 5000);
+  }
+  const window = bot.currentWindow;
+  const slotNumber = Number(slot);
+  if (!window || !Number.isInteger(slotNumber) || slotNumber < 0 || slotNumber >= window.inventoryStart || !window.slots[slotNumber]) throw new Error("Produto nao encontrado no slot do mercado.");
+  const productKey = `${window.slots[slotNumber].type}:${window.slots[slotNumber].metadata}`;
+  const before = countInventoryKey(bot, productKey);
+  const quantity = Math.max(1, Math.min(2304, Math.floor(Number(requestedQuantity) || 1)));
+  state.activity = "comprando";
+  let purchased = 0;
+  for (let attempt = 0; attempt < quantity; attempt += 1) {
+    if (!bot.currentWindow) break;
+    await bot.clickWindow(slotNumber, 0, 0).catch(() => {});
+    await sleep(220);
+    const current = countInventoryKey(bot, productKey);
+    if (current <= before + purchased) break;
+    purchased += current - before - purchased;
+  }
+  if (bot.currentWindow) bot.closeWindow(bot.currentWindow);
+  if (purchased === quantity) state.purchaseNotice = `Compra concluida: ${purchased} unidade(s) no inventario.`;
+  else if (purchased > 0) state.purchaseNotice = `Compra parcial: ${purchased}/${quantity} unidade(s). Saldo ou limite insuficiente.`;
+  else state.purchaseNotice = `Nao foi possivel comprar ${quantity} unidade(s). Verifique o saldo e o limite do mercado.`;
+  queryBalance(state, bot, serverConfig);
+  state.activity = "aguardando comandos";
+}
+
 function json(response, status, data) {
   response.writeHead(status, { "content-type": "application/json; charset=utf-8", "access-control-allow-origin": origin, "access-control-allow-headers": "authorization, content-type", "access-control-allow-methods": "GET, POST, OPTIONS" });
   response.end(JSON.stringify(data));
@@ -843,8 +881,8 @@ const server = createServer(async (request, response) => {
         setTimeout(() => queryBalance(state, bot, serverConfig), 1000);
       }
       if (action === "purchase") {
-        const { slot } = await readBody(request);
-        await purchaseAndDeliver(state, slot);
+        const { slot, quantity } = await readBody(request);
+        await purchaseToInventory(state, slot, quantity);
       }
       return json(response, 202, publicState(account));
     }

@@ -22,6 +22,7 @@ type AutomationStatus = { running: boolean; startedAt: string | null; currentGro
   lastMessageAt?: string | null;
   chatMessages?: ChatMessage[];
   lastError?: string | null;
+  purchaseNotice?: string | null;
   connectedAt?: string | null;
   automationRunning?: boolean;
   registered?: boolean;
@@ -33,13 +34,15 @@ type AutomationStatus = { running: boolean; startedAt: string | null; currentGro
 const names = ["vulkspesca", "vulkspesca02", "vulkspesca03", "vulkspesca04", "vulkspesca05", "vulkspesca06", "vulkspesca07", "vulkspesca08", "vulkspesca09"];
 const fallback: Account[] = names.map((username) => ({ id: username, username, status: "offline", activity: "parado", fishCount: 0, inventory: [] }));
 const knownMarket = [
-  { name: "Removedor de Skin [RARO]", cost: "24K Peixes", slot: 11 },
-  { name: "Tridente de Poseidon [COMUM]", cost: "1.2K Peixes", slot: 12 },
-  { name: "Booster de Armadura 3x", cost: "8K Peixes", slot: 13 },
-  { name: "Chave Ouro", cost: "200 Peixes", slot: 14 },
-  { name: "HypeTrain", cost: "33.2K Peixes", slot: 15 },
-  { name: "Chave Ferro", cost: "30 Peixes", slot: 20 },
-  { name: "Booster de Coins 1.4x", cost: "12K Peixes", slot: 21 },
+  { name: "Chave Diamante", cost: "125K Peixes", slot: 11 },
+  { name: "Removedor de Skin [RARO]", cost: "24K Peixes", slot: 12 },
+  { name: "Tridente de Poseidon [COMUM]", cost: "1.2K Peixes", slot: 13 },
+  { name: "Booster de Armadura 3x", cost: "8K Peixes", slot: 14 },
+  { name: "Boss Tatu", cost: "15K Peixes", slot: 15 },
+  { name: "Chave Ouro", cost: "200 Peixes", slot: 20 },
+  { name: "HypeTrain", cost: "33.2K Peixes", slot: 21 },
+  { name: "Chave Ferro", cost: "30 Peixes", slot: 22 },
+  { name: "Booster de Coins 1.4x", cost: "12K Peixes", slot: 23 },
 ];
 const format = (value: number) => new Intl.NumberFormat("pt-BR").format(value);
 const balanceDisplay = (account: Account) => account.balanceUpdatedAt ? format(account.fishCount) : "—";
@@ -67,6 +70,7 @@ export default function Home() {
   const [groupAutomation, setGroupAutomation] = useState<AutomationStatus | null>(null);
   const [accountsPanelOpen, setAccountsPanelOpen] = useState(false);
   const [registryQuery, setRegistryQuery] = useState("");
+  const [purchaseQuantity, setPurchaseQuantity] = useState("1");
 
   const refresh = useCallback(async () => {
     try {
@@ -141,9 +145,14 @@ export default function Home() {
     if (!ids.length) return setNotice("Selecione pelo menos uma conta");
     setBusy(true);
     setNotice(`Executando ${action} em ${ids.length} conta(s)...`);
-    const results = await Promise.allSettled(ids.map((id) => request(id, action, body)));
+    const effectiveBody = action === "purchase" ? { ...(body || {}), quantity: Math.max(1, Number(purchaseQuantity) || 1) } : body;
+    const results = await Promise.allSettled(ids.map((id) => request(id, action, effectiveBody)));
     const failed = results.filter((result) => result.status === "rejected");
     setNotice(failed.length ? `${results.length - failed.length} concluída(s), ${failed.length} falharam` : `Comando executado em ${ids.length} conta(s)`);
+    if (action === "purchase") {
+      const purchaseResult = results.find((result): result is PromiseFulfilledResult<Account> => result.status === "fulfilled" && Boolean(result.value.purchaseNotice));
+      if (purchaseResult) setNotice(purchaseResult.value.purchaseNotice as string);
+    }
     setBusy(false);
     window.setTimeout(refresh, 500);
   }
@@ -356,6 +365,7 @@ export default function Home() {
           <section className="chat-panel"><div className="chat-head"><div><i className={active.status === "online" ? "" : "red-dot"} /><strong>Chat ao vivo</strong></div><span>{active.chatMessages?.length || 0}/30</span></div><div className="chat-messages">{active.chatMessages?.length ? active.chatMessages.map((message, index) => <div className={message.direction === "out" ? "chat-message sent" : "chat-message"} key={`${message.at}:${index}`}><span>{message.direction === "out" ? "Você" : new Date(message.at).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}</span><p>{message.text}</p></div>) : <div className="chat-empty"><strong>Nenhuma mensagem nesta sessão</strong><span>O chat aparecerá aqui em tempo real.</span></div>}</div><div className="chat-compose"><input value={chatDraft} onChange={(event) => setChatDraft(event.target.value)} onKeyDown={(event) => event.key === "Enter" && sendActiveChat()} placeholder="Mensagem ou /comando..." disabled={active.status !== "online"} /><button onClick={sendActiveChat} disabled={active.status !== "online" || !chatDraft.trim()}>Enviar</button></div>{active.lastError && <div className="chat-error"><strong>Erro atual</strong><span>{active.lastError}</span></div>}</section>
         </div>
         <div className="market-title"><h3>Mercado de Pesca</h3><button onClick={() => act([active.id], "market")}>Atualizar menu</button></div>
+        <div className="purchase-quantity"><label>Quantidade por compra<input type="number" min="1" max="2304" value={purchaseQuantity} onChange={(event) => setPurchaseQuantity(event.target.value)} /></label><span>Os itens ficam no inventário da conta. Nada será levado ao plot.</span></div>
         <div className="market-grid">{knownMarket.map((item) => <div key={item.name}><div><strong>{item.name}</strong><span>{item.cost} · slot {item.slot}</span></div><button onClick={() => act([active.id], "purchase", { slot: item.slot })}>Comprar e entregar</button></div>)}</div>
       </section></div>}
       {managerOpen && <div className="modal-backdrop" onMouseDown={() => setManagerOpen(false)}><section className="account-modal manager-modal" onMouseDown={(event) => event.stopPropagation()}>
