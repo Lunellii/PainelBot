@@ -203,7 +203,7 @@ async function connect(account) {
   if (current?.bot) return publicState(account);
   const allowedLocalAccount = account.allowLocal === true || /^vulkspesca(?:0[2-9])?$/i.test(account.username);
   if (!account.proxyId && (requireProxy || !allowedLocalAccount)) throw new Error(`Conexão local bloqueada para ${account.username}. Esta conta precisa de proxy.`);
-  const state = { bot: null, status: "conectando", activity: "conectando", location: "lobby", fishing: false, automationRunning: false, automationPromise: null, rankupReady: false, fishBalance: Number(account.fishBalance) || 0, balanceUpdatedAt: account.balanceUpdatedAt || null, balanceRequestedAt: 0, balancePending: false, balanceTimeout: null, balanceRefreshTimer: null, balanceError: null, market: [], messages: [], balanceTimer: null, authTimer: null, authenticated: false, lastError: null, lastMessage: null, lastMessageAt: null, connectedAt: null, authAttempts: 0, lastAuthAt: 0, joinTimer: null };
+  const state = { bot: null, status: "conectando", activity: "conectando", location: "lobby", registrationBlocked: false, fishing: false, automationRunning: false, automationPromise: null, rankupReady: false, fishBalance: Number(account.fishBalance) || 0, balanceUpdatedAt: account.balanceUpdatedAt || null, balanceRequestedAt: 0, balancePending: false, balanceTimeout: null, balanceRefreshTimer: null, balanceError: null, market: [], messages: [], balanceTimer: null, authTimer: null, authenticated: false, lastError: null, lastMessage: null, lastMessageAt: null, connectedAt: null, authAttempts: 0, lastAuthAt: 0, joinTimer: null };
   bots.set(account.id, state);
   const serverConfig = await loadServerConfig();
   const options = { host: serverConfig.host, port: serverConfig.port, version: serverConfig.version, username: account.username, auth: account.auth || "offline", hideErrors: true };
@@ -226,7 +226,7 @@ async function connect(account) {
     state.lastError = null;
     console.log(`[${account.username}] entrou no servidor`);
     const authenticate = () => {
-      if (state.authenticated || state.status !== "online" || state.bot !== bot) return;
+      if (state.authenticated || state.registrationBlocked || state.status !== "online" || state.bot !== bot) return;
       if (!account.serverPassword) return;
       state.lastAuthAt = Date.now();
       state.authAttempts += 1;
@@ -252,6 +252,12 @@ async function connect(account) {
     state.messages.push({ at: state.lastMessageAt, text: state.lastMessage, direction: "in" });
     if (state.messages.length > 30) state.messages.splice(0, state.messages.length - 30);
     console.log(`[${account.username}] ${state.lastMessage}`);
+    if (/limites? de contas por ip|limite de contas por ip|esgotou os limites/i.test(state.lastMessage)) {
+      state.registrationBlocked = true;
+      state.lastError = "Registro bloqueado: o servidor atingiu o limite de contas por IP nesta proxy.";
+      state.activity = "registro bloqueado por limite de IP";
+      if (state.authTimer) clearTimeout(state.authTimer);
+    }
     const recentBalanceRequest = state.balancePending && Date.now() - state.balanceRequestedAt < 20000;
     const balance = recentBalanceRequest ? parseBalanceReply(state.lastMessage) : null;
     if (balance !== null) {
