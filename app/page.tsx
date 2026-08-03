@@ -61,7 +61,7 @@ export default function Home() {
   const [activeId, setActiveId] = useState<string | null>(null);
   const [command, setCommand] = useState("");
   const [chatDraft, setChatDraft] = useState("");
-  const [batchCount, setBatchCount] = useState("10");
+  const [batchCount, setBatchCount] = useState("20");
   const [batchProxy, setBatchProxy] = useState("auto");
   const [busy, setBusy] = useState(false);
   const [managerOpen, setManagerOpen] = useState(false);
@@ -326,7 +326,7 @@ export default function Home() {
           </div>
           <div className="batch-connect"><div><strong>Conectar por lote</strong><span>Todas protegidas por um proxy</span></div><label>Proxy<select value={batchProxy} onChange={(event) => setBatchProxy(event.target.value)}><option value="auto">Automático: grupo com vagas</option>{[...new Set(accounts.map((account) => account.proxyId).filter((value): value is string => Boolean(value)))].map((proxyId) => <option key={proxyId} value={proxyId}>{proxyId}</option>)}</select></label><label>Quantidade<input type="number" min="1" value={batchCount} onChange={(event) => setBatchCount(event.target.value)} /></label><button disabled={busy} onClick={connectBatch}>Conectar lote</button></div>
           <div className={`automation-runner ${groupAutomation?.running ? "running" : ""}`}>
-            <div className="automation-copy"><span className="eyebrow">AUTOMÁTICO POR GRUPOS</span><strong>10 contas do mesmo IP/proxy por vez</strong><small>Conecta, autentica, entra no RankUP, prepara a vara quando necessário, começa a pescar e só avança após validar o grupo.</small></div>
+            <div className="automation-copy"><span className="eyebrow">AUTOMÁTICO POR GRUPOS</span><strong>20 contas por rodada · 2 grupos de 10</strong><small>Conecta dois grupos em paralelo, autentica, entra no RankUP, prepara a vara quando necessário e começa a pescar sem travar por falhas individuais.</small></div>
             <div className="automation-status"><span>{groupAutomation?.running ? "EM EXECUÇÃO" : "PARADO"}</span><strong>{groupAutomation?.message || "Pronto para iniciar"}</strong>{groupAutomation?.currentGroup && <small>Grupo: {groupAutomation.currentGroup} · {groupAutomation.currentAccounts.length} contas</small>}{groupAutomation?.failedAccounts.length ? <small className="automation-failures">Falhas atuais: {groupAutomation.failedAccounts.map((failure) => failure.username).join(", ")}</small> : null}{groupAutomation?.nextGroupAt && <small>Próximo grupo às {new Date(groupAutomation.nextGroupAt).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}</small>}</div>
             <div className="automation-progress"><span>{groupAutomation?.completedGroups.length || 0} grupo(s) concluído(s)</span>{groupAutomation?.currentAccounts.length ? <small>{groupAutomation.currentAccounts.join(", ")}</small> : <small>Intervalo entre grupos: 2 minutos</small>}</div>
             <button className={groupAutomation?.running ? "stop-automation" : "start-automation"} disabled={busy} onClick={() => controlGroupAutomation(groupAutomation?.running ? "stop" : "start")}>{groupAutomation?.running ? "Parar fila" : "Iniciar todos aos poucos"}</button>

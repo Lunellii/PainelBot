@@ -568,26 +568,25 @@ async function runGroupAutomation(runId) {
   }
   groupAutomation.completedGroups = [];
   let retryPool = [];
-  for (let index = 0; index < groups.length && groupAutomation.running && groupAutomation.runId === runId; index += 1) {
-    const group = groups[index];
+  for (let index = 0; index < groups.length && groupAutomation.running && groupAutomation.runId === runId; index += 2) {
+    const wave = groups.slice(index, index + 2);
     const retryIds = new Set(retryPool.map((account) => account.id));
-    const batch = [...retryPool, ...group.members.filter((account) => !retryIds.has(account.id))];
-    groupAutomation.currentGroup = group.label;
+    const batches = wave.map((group, waveIndex) => ({ group, members: [...(waveIndex === 0 ? retryPool : []), ...group.members.filter((account) => !retryIds.has(account.id))] }));
+    const batch = batches.flatMap((entry) => entry.members);
+    groupAutomation.currentGroup = wave.map((group) => group.label).join(" + ");
     groupAutomation.currentAccounts = batch.map((account) => account.username);
     groupAutomation.failedAccounts = [];
     groupAutomation.nextGroupAt = null;
-    groupAutomation.message = `Processando ${group.label}${retryPool.length ? `; re-tentando ${retryPool.length} pendente(s)` : ""}`;
+    groupAutomation.message = `Processando ${wave.map((group) => group.label).join(" + ")}${retryPool.length ? `; re-tentando ${retryPool.length} pendente(s)` : ""}`;
     const results = await Promise.allSettled(batch.map((account) => runAutomatic(account)));
     const failed = results.map((result, resultIndex) => ({ result, account: batch[resultIndex] })).filter(({ result }) => result.status === "rejected");
     retryPool = failed.map(({ account }) => account);
     groupAutomation.failedAccounts = failed.map(({ account, result }) => ({ username: account.username, error: String(result.reason?.message || result.reason || "Falha") }));
     if (!groupAutomation.running || groupAutomation.runId !== runId) break;
-    groupAutomation.completedGroups.push(group.label);
-    if (index < groups.length - 1) {
+    groupAutomation.completedGroups.push(...wave.map((group) => group.label));
+    if (index + wave.length < groups.length) {
       groupAutomation.nextGroupAt = new Date(Date.now() + 2 * 60 * 1000).toISOString();
-      groupAutomation.message = `${group.label} concluido; proximo grupo em 2 minutos`;
-      groupAutomation.message = `${group.label} concluído; próximo grupo em 15 minutos`;
-      groupAutomation.message = `${group.label} concluido; proximo grupo em 2 minutos`;
+      groupAutomation.message = `${wave.map((group) => group.label).join(" + ")} concluido; proximos 2 grupos em 2 minutos`;
       await waitGroupDelay(2 * 60 * 1000, runId);
     }
   }
