@@ -557,29 +557,22 @@ async function runGroupAutomation(runId) {
     }
   }
   groupAutomation.completedGroups = [];
+  let retryPool = [];
   for (let index = 0; index < groups.length && groupAutomation.running && groupAutomation.runId === runId; index += 1) {
     const group = groups[index];
+    const retryIds = new Set(retryPool.map((account) => account.id));
+    const batch = [...retryPool, ...group.members.filter((account) => !retryIds.has(account.id))];
     groupAutomation.currentGroup = group.label;
-    groupAutomation.currentAccounts = group.members.map((account) => account.username);
+    groupAutomation.currentAccounts = batch.map((account) => account.username);
     groupAutomation.failedAccounts = [];
     groupAutomation.nextGroupAt = null;
-    let pending = [...group.members];
-    let round = 0;
-    while (groupAutomation.running && groupAutomation.runId === runId && pending.length) {
-      round += 1;
-      groupAutomation.message = `Processando ${group.label}: tentativa ${round}`;
-      const results = await Promise.allSettled(pending.map((account) => runAutomatic(account)));
-      const failed = results.map((result, resultIndex) => ({ result, account: pending[resultIndex] })).filter(({ result }) => result.status === "rejected");
-      groupAutomation.failedAccounts = failed.map(({ account, result }) => ({ username: account.username, error: String(result.reason?.message || result.reason || "Falha") }));
-      pending = failed.map(({ account }) => account);
-      if (pending.length && groupAutomation.running && groupAutomation.runId === runId) {
-        groupAutomation.message = `${pending.length} conta(s) falharam; nova tentativa em 1 minuto`;
-        await waitGroupDelay(60000, runId);
-      }
-    }
+    groupAutomation.message = `Processando ${group.label}${retryPool.length ? `; re-tentando ${retryPool.length} pendente(s)` : ""}`;
+    const results = await Promise.allSettled(batch.map((account) => runAutomatic(account)));
+    const failed = results.map((result, resultIndex) => ({ result, account: batch[resultIndex] })).filter(({ result }) => result.status === "rejected");
+    retryPool = failed.map(({ account }) => account);
+    groupAutomation.failedAccounts = failed.map(({ account, result }) => ({ username: account.username, error: String(result.reason?.message || result.reason || "Falha") }));
     if (!groupAutomation.running || groupAutomation.runId !== runId) break;
     groupAutomation.completedGroups.push(group.label);
-    groupAutomation.failedAccounts = [];
     if (index < groups.length - 1) {
       groupAutomation.nextGroupAt = new Date(Date.now() + 2 * 60 * 1000).toISOString();
       groupAutomation.message = `${group.label} concluido; proximo grupo em 2 minutos`;
