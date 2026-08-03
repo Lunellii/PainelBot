@@ -340,13 +340,31 @@ async function putRodInFirstHotbarSlot(bot, rod) {
   bot.setQuickBarSlot(0);
 }
 
-async function moveInventoryToTrash(bot, state) {
+function rodMultiplier(item) {
+  const text = `${item?.displayName || ""} ${JSON.stringify(item?.nbt || {})}`;
+  const match = text.match(/(\d+(?:[.,]\d+)?)\s*x/i);
+  return match ? Number(match[1].replace(",", ".")) : 1;
+}
+
+function rodSignature(item) {
+  return `${rodMultiplier(item)}|${item?.displayName || item?.name || "fishing_rod"}`;
+}
+
+async function moveInventoryToTrash(bot, state, keepRodSignature = null) {
   if (bot.currentWindow) bot.closeWindow(bot.currentWindow);
   await sleep(200);
   bot.chat("/lixeira");
   const window = await waitForWindow(bot, 6000);
   if (!Number.isInteger(window.inventoryStart)) throw new Error("A /lixeira não abriu um inventário válido.");
-  const items = bot.inventory.items().filter((item) => item.name !== "fishing_rod");
+  let keptRod = false;
+  const items = bot.inventory.items().filter((item) => {
+    if (item.name !== "fishing_rod") return true;
+    if (!keptRod && keepRodSignature && rodSignature(item) === keepRodSignature) {
+      keptRod = true;
+      return false;
+    }
+    return true;
+  });
   for (const item of items) {
     if (item.slot < 9 || item.slot > 44) continue;
     const windowSlot = window.inventoryStart + item.slot - 9;
@@ -373,7 +391,7 @@ async function runStarterKit(account, state) {
   bot.chat("/kit iniciante");
   await sleep(3500);
 
-  let rod = bot.inventory.items().find((item) => item.name === "fishing_rod");
+  let rod = bot.inventory.items().filter((item) => item.name === "fishing_rod").sort((a, b) => rodMultiplier(b) - rodMultiplier(a))[0];
   if (!rod) throw new Error("O /kit iniciante não entregou uma vara de pesca.");
   const firstHotbarSlot = 36;
   if (rod.slot !== firstHotbarSlot) {
@@ -381,18 +399,23 @@ async function runStarterKit(account, state) {
     await putRodInFirstHotbarSlot(bot, rod);
   }
 
-  rod = bot.inventory.items().find((item) => item.name === "fishing_rod");
+  rod = bot.inventory.items().filter((item) => item.name === "fishing_rod").sort((a, b) => rodMultiplier(b) - rodMultiplier(a))[0];
+  const keepRod = rodSignature(rod);
   if (!rod) throw new Error("A vara desapareceu durante a organização do inventário.");
   bot.setQuickBarSlot(0);
 
   for (let pass = 0; pass < 3; pass += 1) {
-    const leftovers = bot.inventory.items().filter((item) => item.name !== "fishing_rod");
+    const rods = bot.inventory.items().filter((item) => item.name === "fishing_rod");
+    const kept = rods.find((item) => rodSignature(item) === keepRod) || rods[0];
+    const leftovers = bot.inventory.items().filter((item) => item.name !== "fishing_rod").concat(rods.filter((item) => item !== kept));
     if (!leftovers.length) break;
     state.activity = `limpando inventário na /lixeira (${pass + 1}/3)`;
-    await moveInventoryToTrash(bot, state);
+    await moveInventoryToTrash(bot, state, keepRod);
   }
-  const leftovers = bot.inventory.items().filter((item) => item.name !== "fishing_rod");
-  rod = bot.inventory.items().find((item) => item.name === "fishing_rod");
+  const rods = bot.inventory.items().filter((item) => item.name === "fishing_rod");
+  const kept = rods.find((item) => rodSignature(item) === keepRod) || rods[0];
+  const leftovers = bot.inventory.items().filter((item) => item.name !== "fishing_rod").concat(rods.filter((item) => item !== kept));
+  rod = kept;
   if (!rod) throw new Error("A vara desapareceu durante a limpeza na /lixeira.");
   if (rod.slot !== firstHotbarSlot) await putRodInFirstHotbarSlot(bot, rod);
   bot.setQuickBarSlot(0);
@@ -405,7 +428,7 @@ async function runStarterKitWithRetry(account, state, attempts = 3) {
   let lastError = null;
   for (let attempt = 1; attempt <= attempts; attempt += 1) {
     try {
-      await runStarterKitWithRetry(account, state);
+      await runStarterKit(account, state);
       if (state.bot?.inventory.items().some((item) => item.name === "fishing_rod")) return;
       throw new Error("O kit terminou sem uma vara de pesca.");
     } catch (error) {
@@ -475,7 +498,7 @@ async function startFishing(account, state) {
     let rod = bot.inventory.items().find((item) => item.name === "fishing_rod");
     if (!rod) {
       state.activity = "vara ausente: preparando kit iniciante";
-      await runStarterKit(account, state);
+      await runStarterKitWithRetry(account, state);
       rod = bot.inventory.items().find((item) => item.name === "fishing_rod");
       if (!rod) throw new Error("O /kit iniciante não entregou uma vara de pesca.");
     }
@@ -554,7 +577,7 @@ async function runAutomatic(account) {
     let rod = state.bot.inventory.items().find((item) => item.name === "fishing_rod");
     if (!rod) {
       state.activity = "automático: preparando kit";
-      await runStarterKit(account, state);
+      await runStarterKitWithRetry(account, state);
       rod = state.bot.inventory.items().find((item) => item.name === "fishing_rod");
       if (!rod) throw new Error("O fluxo do kit terminou sem vara de pesca.");
     }
@@ -880,7 +903,7 @@ const server = createServer(async (request, response) => {
       if (action === "pause") { state.fishing = false; state.activity = "parado"; bot.deactivateItem(); bot.clearControlStates(); }
       if (action === "plot") { state.fishing = false; state.activity = "indo ao destino"; state.location = "plot"; bot.chat(serverConfig.plotCommand); setTimeout(() => { if (state.activity === "indo ao destino") state.activity = "no destino"; }, 5000); }
       if (action === "kit") {
-        try { await runStarterKit(account, state); }
+        try { await runStarterKitWithRetry(account, state); }
         catch (error) { state.lastError = error instanceof Error ? error.message : "Falha no kit iniciante"; state.activity = "erro no kit"; throw error; }
       }
       if (action === "market") { state.activity = "mercado"; bot.chat(serverConfig.marketCommand); }
