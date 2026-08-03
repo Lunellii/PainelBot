@@ -176,6 +176,8 @@ function publicState(account) {
     activity: state?.activity || "parado",
     location: state?.location || (state?.rankupReady ? "rankup" : "lobby"),
     fishCount: state?.fishBalance ?? account.fishBalance ?? 0,
+    fishPerMinute: state?.status === "online" ? Number(state.fishPerMinute) || 0 : 0,
+    fishPerHour: state?.status === "online" ? (Number(state.fishPerMinute) || 0) * 60 : 0,
     balanceUpdatedAt: state?.balanceUpdatedAt || account.balanceUpdatedAt || null,
     inventory,
     market: marketOf(state),
@@ -204,7 +206,7 @@ async function connect(account) {
   if (current?.bot) return publicState(account);
   const allowedLocalAccount = account.allowLocal === true || /^vulkspesca(?:0[2-9])?$/i.test(account.username);
   if (!account.proxyId && (requireProxy || !allowedLocalAccount)) throw new Error(`Conexão local bloqueada para ${account.username}. Esta conta precisa de proxy.`);
-  const state = { bot: null, status: "conectando", activity: "conectando", location: "lobby", registrationBlocked: false, intentionalDisconnect: false, fishing: false, automationRunning: false, automationPromise: null, rankupReady: false, fishBalance: Number(account.fishBalance) || 0, balanceUpdatedAt: account.balanceUpdatedAt || null, balanceRequestedAt: 0, balancePending: false, balanceTimeout: null, balanceRefreshTimer: null, balanceError: null, market: [], messages: [], balanceTimer: null, authTimer: null, authenticated: false, lastError: null, lastMessage: null, lastMessageAt: null, connectedAt: null, authAttempts: 0, lastAuthAt: 0, joinTimer: null };
+  const state = { bot: null, status: "conectando", activity: "conectando", location: "lobby", registrationBlocked: false, intentionalDisconnect: false, fishing: false, automationRunning: false, automationPromise: null, rankupReady: false, fishBalance: Number(account.fishBalance) || 0, fishPerMinute: 0, balanceUpdatedAt: account.balanceUpdatedAt || null, balanceRequestedAt: 0, balancePending: false, balanceTimeout: null, balanceRefreshTimer: null, balanceError: null, market: [], messages: [], balanceTimer: null, authTimer: null, authenticated: false, lastError: null, lastMessage: null, lastMessageAt: null, connectedAt: null, authAttempts: 0, lastAuthAt: 0, joinTimer: null };
   bots.set(account.id, state);
   const serverConfig = await loadServerConfig();
   const options = { host: serverConfig.host, port: serverConfig.port, version: serverConfig.version, username: account.username, auth: account.auth || "offline", hideErrors: true };
@@ -262,8 +264,16 @@ async function connect(account) {
     const recentBalanceRequest = state.balancePending && Date.now() - state.balanceRequestedAt < 20000;
     const balance = recentBalanceRequest ? parseBalanceReply(state.lastMessage) : null;
     if (balance !== null) {
+      const previousBalance = Number(state.fishBalance) || 0;
+      const previousAt = Date.parse(state.balanceUpdatedAt || "");
+      const now = Date.now();
+      const connectedAt = Date.parse(state.connectedAt || "");
+      if (previousAt && (!connectedAt || previousAt >= connectedAt) && now > previousAt && balance >= previousBalance) {
+        const elapsedMinutes = (now - previousAt) / 60000;
+        if (elapsedMinutes >= 0.25) state.fishPerMinute = (balance - previousBalance) / elapsedMinutes;
+      }
       state.fishBalance = balance;
-      state.balanceUpdatedAt = new Date().toISOString();
+      state.balanceUpdatedAt = new Date(now).toISOString();
       state.balanceRequestedAt = 0;
       state.balancePending = false;
       state.balanceError = null;

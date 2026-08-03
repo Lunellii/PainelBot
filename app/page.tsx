@@ -15,6 +15,8 @@ type AutomationStatus = { running: boolean; startedAt: string | null; currentGro
   activity: string;
   location?: "offline" | "lobby" | "rankup" | "pesca" | string;
   fishCount: number;
+  fishPerMinute?: number;
+  fishPerHour?: number;
   balanceUpdatedAt?: string | null;
   inventory: Item[];
   market?: MarketItem[];
@@ -105,6 +107,9 @@ export default function Home() {
   const errors = accounts.filter((account) => account.lastError).length;
   const knownBalances = accounts.filter((account) => account.balanceUpdatedAt);
   const fish = knownBalances.reduce((sum, account) => sum + account.fishCount, 0);
+  const onlineRateAccounts = accounts.filter((account) => account.status === "online");
+  const fishPerMinute = onlineRateAccounts.reduce((sum, account) => sum + (Number(account.fishPerMinute) || 0), 0);
+  const fishPerHour = fishPerMinute * 60;
   const balanceTargets = accounts.filter((account) => selected.includes(account.id) && account.status === "online").map((account) => account.id);
   const registryVisible = useMemo(() => accounts.filter((account) => account.username.toLowerCase().includes(registryQuery.toLowerCase())), [accounts, registryQuery]);
 
@@ -301,6 +306,7 @@ export default function Home() {
           <article><span className="stat-icon blue">♟</span><div><p>CONTAS CONFIGURADAS</p><strong>{accounts.length}<small>/∞</small></strong><span>{selected.length} selecionada(s)</span></div></article>
           <article><span className="stat-icon green">●</span><div><p>ONLINE AGORA</p><strong>{online}<small>/{accounts.length}</small></strong><span className="positive">{fishing} pescando</span></div></article>
           <article><span className="stat-icon violet">◈</span><div><p>SALDO TOTAL /PEIXES</p><strong>{knownBalances.length ? format(fish) : "—"}</strong><span>{knownBalances.length}/{accounts.length} saldos atualizados</span></div></article>
+          <article><span className="stat-icon blue">↗</span><div><p>MÉDIA DE PESCA (ONLINE)</p><strong>{onlineRateAccounts.length ? `${format(Math.round(fishPerMinute))}/min` : "—"}</strong><span>{onlineRateAccounts.length ? `${format(Math.round(fishPerHour))}/hora · ${onlineRateAccounts.length} conta(s)` : "Aguardando duas leituras de /peixes"}</span></div></article>
           <article className={errors ? "featured clickable-stat" : "clickable-stat"} onClick={() => setFilter("problema")}><span className="stat-icon orange">!</span><div><p>CONTAS COM ERRO</p><strong>{errors}</strong><span>{errors ? "Clique para filtrar" : "Nenhum erro"}</span></div></article>
         </section>
 
