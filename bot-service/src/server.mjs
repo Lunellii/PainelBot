@@ -401,6 +401,25 @@ async function runStarterKit(account, state) {
   console.log(`[${account.username}] kit preparado: somente a vara permaneceu no slot 1`);
 }
 
+async function runStarterKitWithRetry(account, state, attempts = 3) {
+  let lastError = null;
+  for (let attempt = 1; attempt <= attempts; attempt += 1) {
+    try {
+      await runStarterKitWithRetry(account, state);
+      if (state.bot?.inventory.items().some((item) => item.name === "fishing_rod")) return;
+      throw new Error("O kit terminou sem uma vara de pesca.");
+    } catch (error) {
+      lastError = error;
+      if (attempt < attempts && state.bot && state.status === "online") {
+        state.lastError = `Kit sem vara; repetindo (${attempt + 1}/${attempts})`;
+        state.activity = "repetindo kit iniciante";
+        await sleep(2500);
+      }
+    }
+  }
+  throw lastError || new Error("O /kit iniciante falhou.");
+}
+
 async function joinRankup(account, state, attempt = 0) {
   const bot = state.bot;
   if (!bot || state.status !== "online") return;
@@ -504,15 +523,32 @@ async function runAutomatic(account) {
       while (state.bot && Date.now() < reconnectDeadline) await sleep(200);
       state = bots.get(account.id);
     }
-    if (!state?.bot) {
-      await connect(account);
-      state = bots.get(account.id);
+    let ready = false;
+    let lastConnectError = null;
+    for (let attempt = 1; attempt <= 3 && !ready; attempt += 1) {
+      try {
+        if (!state?.bot) await connect(account);
+        state = bots.get(account.id);
+        if (!state) throw new Error("Conta sem estado de conexão.");
+        state = await waitForAccountReady(account);
+        ready = true;
+      } catch (error) {
+        lastConnectError = error;
+        const message = String(error?.message || error);
+        if (attempt >= 3 || !/já está online|already online|sess[aã]o/i.test(message)) throw error;
+        state = bots.get(account.id);
+        if (state?.bot) {
+          state.intentionalDisconnect = true;
+          state.bot.quit("Limpando sessão anterior");
+        }
+        await sleep(8000);
+        state = bots.get(account.id);
+      }
     }
-    if (!state) throw new Error("Não consegui iniciar a conta.");
+    if (!ready) throw lastConnectError || new Error("Não consegui confirmar a sessão.");
     state.automationRunning = true;
     state.lastError = null;
     state.activity = state.status === "online" ? state.activity : "automático: conectando";
-    state = await waitForAccountReady(account);
     if (state.activity === "pescando" && state.fishing) return publicState(account);
     state.activity = "automático: verificando vara";
     let rod = state.bot.inventory.items().find((item) => item.name === "fishing_rod");
@@ -578,7 +614,10 @@ async function runGroupAutomation(runId) {
     groupAutomation.failedAccounts = [];
     groupAutomation.nextGroupAt = null;
     groupAutomation.message = `Processando ${wave.map((group) => group.label).join(" + ")}${retryPool.length ? `; re-tentando ${retryPool.length} pendente(s)` : ""}`;
-    const results = await Promise.allSettled(batch.map((account) => runAutomatic(account)));
+    const results = await Promise.allSettled(batch.map((account, accountIndex) => (async () => {
+      await sleep(accountIndex * 1500);
+      return runAutomatic(account);
+    })()));
     const failed = results.map((result, resultIndex) => ({ result, account: batch[resultIndex] })).filter(({ result }) => result.status === "rejected");
     retryPool = failed.map(({ account }) => account);
     groupAutomation.failedAccounts = failed.map(({ account, result }) => ({ username: account.username, error: String(result.reason?.message || result.reason || "Falha") }));
