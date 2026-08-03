@@ -72,6 +72,33 @@ header { display: flex; align-items: center; justify-content: space-between; mar
 .operation-buttons button:hover:not(:disabled) { transform: translateY(-1px); background: #202937; }
 .operation-buttons button:focus-visible, .batch-connect button:focus-visible, .start-automation:focus-visible { outline: 2px solid #86c8ff; outline-offset: 2px; }
 @media (max-width: 760px) { .action-guide { grid-template-columns: 1fr 1fr; } }
+
+/* Visual refresh: operational console, with a flatter neutral palette. */
+:root { --bg: #0d1417; --panel: #141d20; --panel-2: #1a2528; --line: #2a393d; --muted: #87989a; --text: #edf3f1; --red: #d9a45b; --green: #45d0ad; --blue: #72b8c5; }
+body { background: #0d1417; font-family: "Segoe UI", Arial, sans-serif; }
+.sidebar { background: #10191c; border-right-color: #263438; }
+.brand-mark { background: #d9a45b; color: #162023; box-shadow: none; border-radius: 8px; }
+.nav-item:hover, .nav-item.active { background: #1a292c; border-color: #31464a; }
+.nav-item.active span { color: var(--green); }
+.server-card, .operations-panel, .account-card, .stats-grid article { background: #141d20; border-color: #2a393d; box-shadow: none; }
+.stats-grid article.featured { background: #231d17; border-color: #725632; }
+.stats-grid article { border-radius: 8px; }
+.stats-grid article, .operations-panel, .account-card { border-radius: 9px; }
+.stats-grid article { min-height: 112px; }
+.stat-icon.blue { color: #9bd3dc; background: #1a3439; }.stat-icon.green { color: #70e2c5; background: #173b35; }.stat-icon.violet { color: #d9c07b; background: #3a3020; }.stat-icon.orange { color: #f0b86c; background: #3b2b1c; }
+.account-card:hover, .account-card.checked { transform: none; box-shadow: 0 0 0 1px #4d686c; }
+.account-card.checked { border-color: #d9a45b; }
+.avatar { background: #284148; color: #a9e3e6; }
+.activity { background: #10191c; border-color: #26383c; }
+.operation-buttons, .action-guide { background: #10191c; border-color: #26383c; }
+.operation-buttons button, .global-command button, .modal-actions button { background: #1a272a; border-color: #33474b; color: #c0cfcd; border-radius: 6px; }
+.operation-buttons .success { color: #6fe0bd; border-color: #397c6c; background: #17352f; }.operation-buttons .auto-button { color: #9ed9e0; border-color: #3d7078; background: #183238; }.operation-buttons .violet-button { color: #f0cb7b; border-color: #806331; background: #302719; }.operation-buttons .danger { color: #ef9082; border-color: #78443b; background: #321d1a; }
+.batch-connect, .automation-runner, .global-command { border-color: #2a393d; }
+.automation-runner { background: #152327; border-radius: 8px; }.automation-runner.running { border-color: #3f8a84; box-shadow: inset 3px 0 #45d0ad; }
+.start-automation { border-color: #4d9290; color: #8fe3d2; background: #183936; }.stop-automation { border-color: #845047; background: #351f1c; }
+.action-guide b { color: #f1c875; background: #3b2e1d; }.action-guide strong { color: #d7e5e1; }
+.filters button.selected { background: #254247; border-color: #4d7a7b; }
+.manager-button { border-color: #85683c; background: #302719; color: #f0c979; }
 @media (max-width: 1050px) { .automation-runner { grid-template-columns: 1fr 1fr; }.automation-runner > button { width: 100%; } }
 @media (max-width: 760px) { .automation-runner { grid-template-columns: 1fr; } }
 @media (max-width: 760px) { .header-tools { flex-direction: column-reverse; align-items: flex-end; }.manager-button { padding: 8px; }.manager-columns { grid-template-columns: 1fr; }.form-grid { grid-template-columns: 1fr; }.proxy-list > div { grid-template-columns: 1fr; } }
