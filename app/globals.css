@@ -99,6 +99,37 @@ body { background: #0d1417; font-family: "Segoe UI", Arial, sans-serif; }
 .action-guide b { color: #f1c875; background: #3b2e1d; }.action-guide strong { color: #d7e5e1; }
 .filters button.selected { background: #254247; border-color: #4d7a7b; }
 .manager-button { border-color: #85683c; background: #302719; color: #f0c979; }
+
+/* Structural layout refresh */
+.app-shell { grid-template-columns: 258px 1fr; }
+.sidebar { padding: 30px 20px; }
+.brand { padding-bottom: 42px; }
+.content { max-width: 1780px; padding-left: clamp(28px, 4vw, 72px); padding-right: clamp(28px, 4vw, 72px); }
+header { padding-bottom: 20px; border-bottom: 1px solid #26383c; margin-bottom: 20px; }
+h1 { font-size: clamp(28px, 3.2vw, 42px); letter-spacing: -.055em; }
+.stats-grid { grid-template-columns: repeat(5, minmax(150px, 1fr)); gap: 9px; }
+.stats-grid article { min-height: 104px; padding: 16px; }
+.stats-grid strong { font-size: 23px; }
+.operations-panel { padding: 20px; }
+.operation-head { padding-bottom: 13px; border-bottom: 1px solid #26383c; }
+.action-guide { grid-template-columns: repeat(4, minmax(150px, 1fr)); padding: 12px 14px; gap: 0; }
+.action-guide span { padding: 4px 14px; border-right: 1px solid #26383c; }
+.action-guide span:last-child { border-right: 0; }
+.operation-buttons { grid-template-columns: repeat(5, minmax(125px, 1fr)); gap: 8px; padding: 8px; }
+.operation-buttons button { min-height: 44px; font-size: 10px; }
+.batch-connect { margin-top: 15px; padding-top: 15px; }
+.automation-runner { margin-top: 15px; padding: 16px; }
+.global-command { margin-top: 15px; padding-top: 15px; }
+.accounts-section { margin-top: 28px; }
+.section-heading { position: sticky; top: 0; z-index: 4; padding: 12px 0; background: #0d1417; }
+.account-grid { grid-template-columns: repeat(4, minmax(230px, 1fr)); gap: 10px; }
+.account-card { border-radius: 7px; }
+.card-top { padding: 11px 12px; }
+.activity { margin: 0 11px; padding: 8px; }
+.metrics { padding: 11px; }
+.card-actions { padding: 9px 11px; }
+@media (max-width: 1250px) { .stats-grid { grid-template-columns: repeat(3, 1fr); }.account-grid { grid-template-columns: repeat(3, minmax(230px, 1fr)); }.operation-buttons { grid-template-columns: repeat(3, 1fr); } }
+@media (max-width: 760px) { .app-shell { grid-template-columns: 1fr; }.stats-grid { grid-template-columns: 1fr 1fr; }.account-grid { grid-template-columns: 1fr; }.action-guide span { padding: 4px 6px; } }
 @media (max-width: 1050px) { .automation-runner { grid-template-columns: 1fr 1fr; }.automation-runner > button { width: 100%; } }
 @media (max-width: 760px) { .automation-runner { grid-template-columns: 1fr; } }
 @media (max-width: 760px) { .header-tools { flex-direction: column-reverse; align-items: flex-end; }.manager-button { padding: 8px; }.manager-columns { grid-template-columns: 1fr; }.form-grid { grid-template-columns: 1fr; }.proxy-list > div { grid-template-columns: 1fr; } }
