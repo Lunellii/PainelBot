@@ -312,6 +312,7 @@ export default function Home() {
 
         <section className="operations-panel">
           <div className="operation-head"><div><p className="eyebrow">AÇÕES EM LOTE</p><strong>{selected.length ? `${selected.length} conta(s) selecionada(s)` : "Selecione contas para liberar as ações"}</strong><small className="selection-help">Clique nas contas ou use Shift para selecionar um intervalo.</small></div><div className="selection-tools"><button className="ghost" onClick={selectVisible} disabled={!visible.length}>Selecionar visíveis ({visible.length})</button><button className="ghost" onClick={clearSelection} disabled={!selected.length}>Limpar</button></div></div>
+          <div className="action-guide"><span><b>1</b><strong>Conectar</strong><small>entrar no servidor</small></span><span><b>2</b><strong>Preparar</strong><small>RankUP e kit</small></span><span><b>3</b><strong>Operar</strong><small>plot, pesca e mercado</small></span><span><b>4</b><strong>Encerrar</strong><small>pausar ou desconectar</small></span></div>
           <div className="operation-buttons">
             <button disabled={busy || !selected.length} className="success" onClick={() => act(targets, "connect")}>● Conectar</button>
             <button disabled={busy || !selected.length} className="auto-button" title={selected.length ? "Executar o fluxo completo nas contas selecionadas" : "Selecione as contas primeiro"} onClick={() => act(selected, "auto")}>▶ Automático selecionadas</button>

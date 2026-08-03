@@ -61,6 +61,17 @@ header { display: flex; align-items: center; justify-content: space-between; mar
 @media (max-width: 760px) { .app-shell { display: block; }.sidebar { position: static; height: auto; padding: 16px; }.sidebar nav, .server-card, .profile { display: none; }.brand { padding: 0; }.content { padding: 24px 14px 80px; }header { align-items: flex-start; gap: 18px; }.header-actions .icon-button { display: none; }.primary { font-size: 0; padding: 10px; }.primary::first-letter { font-size: 20px; }.stats-grid { grid-template-columns: 1fr 1fr; }.stats-grid article { padding: 14px; min-height: 105px; }.command-bar, .section-heading { align-items: flex-start; gap: 13px; flex-direction: column; }.command-actions, .filters { overflow-x: auto; width: 100%; padding-bottom: 3px; }.filters label { min-width: 160px; }.account-grid { grid-template-columns: 1fr; }.toast { left: 14px; right: 14px; text-align: center; } }
 @media (max-width: 760px) { .operation-buttons { grid-template-columns: repeat(2, 1fr); }.global-command { grid-template-columns: 1fr; }.operation-head { align-items: flex-start; gap: 10px; flex-direction: column; }.compact-actions { grid-template-columns: repeat(3, 1fr); }.modal-summary { grid-template-columns: 1fr 1fr; }.modal-actions { grid-template-columns: 1fr 1fr; }.modal-workspace { grid-template-columns: 1fr; }.chat-panel { margin-top: 0; } }
 @media (max-width: 760px) { .batch-connect { grid-template-columns: 1fr; } }
+
+.action-guide { display: grid; grid-template-columns: repeat(4, 1fr); gap: 7px; margin: 4px 0 10px; padding: 9px; border: 1px solid #242d3b; border-radius: 10px; background: #0b1018; }
+.action-guide span { display: grid; grid-template-columns: 22px 1fr; column-gap: 7px; align-items: center; min-width: 0; }
+.action-guide b { grid-row: span 2; width: 22px; height: 22px; display: grid; place-items: center; border-radius: 7px; color: #a9d5ff; background: #172b43; font: 800 10px var(--font-geist-mono), monospace; }
+.action-guide strong { color: #dce5f2; font-size: 9px; }
+.action-guide small { color: #68758a; font-size: 8px; }
+.operation-buttons { padding: 3px; border-radius: 10px; background: #0b1018; }
+.operation-buttons button { min-height: 40px; transition: border-color .15s, background .15s, transform .15s; }
+.operation-buttons button:hover:not(:disabled) { transform: translateY(-1px); background: #202937; }
+.operation-buttons button:focus-visible, .batch-connect button:focus-visible, .start-automation:focus-visible { outline: 2px solid #86c8ff; outline-offset: 2px; }
+@media (max-width: 760px) { .action-guide { grid-template-columns: 1fr 1fr; } }
 @media (max-width: 1050px) { .automation-runner { grid-template-columns: 1fr 1fr; }.automation-runner > button { width: 100%; } }
 @media (max-width: 760px) { .automation-runner { grid-template-columns: 1fr; } }
 @media (max-width: 760px) { .header-tools { flex-direction: column-reverse; align-items: flex-end; }.manager-button { padding: 8px; }.manager-columns { grid-template-columns: 1fr; }.form-grid { grid-template-columns: 1fr; }.proxy-list > div { grid-template-columns: 1fr; } }
