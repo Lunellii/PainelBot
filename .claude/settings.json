@@ -15,7 +15,10 @@
       "Bash(node --check *)",
       "Bash(node --test *)",
       "Bash(git status *)",
-      "Bash(git diff *)",
+      "Bash(git diff)",
+      "Bash(git diff --stat)",
+      "Bash(git diff --cached *)",
+      "Bash(git diff HEAD *)",
       "Bash(git log *)",
       "Bash(git show *)",
       "Bash(git branch *)",
@@ -28,6 +31,7 @@
       "Bash(git push *)"
     ],
     "deny": [
+      "Bash(git diff --no-index *)",
       "Read(bot-service/config/accounts.json)",
       "Read(bot-service/config/proxies.json)",
       "Read(bot-service/config/server.json)",
