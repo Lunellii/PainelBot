@@ -1,8 +1,10 @@
 name: CI
 
+# Push so na main: num branch com PR aberto, o gatilho pull_request ja cobre
+# cada envio, e deixar os dois amplos faz o mesmo commit rodar duas vezes.
 on:
   push:
-    branches: ["**"]
+    branches: [main]
   pull_request:
 
 jobs:
