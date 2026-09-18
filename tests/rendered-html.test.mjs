@@ -1,91 +1,84 @@
 import assert from "node:assert/strict";
-import { access, readFile, readdir } from "node:fs/promises";
+import { execFileSync } from "node:child_process";
 import test from "node:test";
 
-const developmentPreviewMeta =
-  /<meta(?=[^>]*\bname=["']codex-preview["'])(?=[^>]*\bcontent=["']development["'])[^>]*>/i;
-const templateRoot = new URL("../", import.meta.url);
-const previewRoot = new URL("../app/_sites-preview/", import.meta.url);
+const repoRoot = new URL("../", import.meta.url);
 
-async function render() {
+// O painel é renderizado pelo worker que o `vinext build` gera em dist/.
+// `npm test` roda o build antes, então dist/ reflete o código atual.
+async function render(path = "/") {
   const workerUrl = new URL("../dist/server/index.js", import.meta.url);
   workerUrl.searchParams.set("test", `${process.pid}-${Date.now()}`);
   const { default: worker } = await import(workerUrl.href);
 
   return worker.fetch(
-    new Request("http://localhost/", {
-      headers: { accept: "text/html" },
-    }),
-    {
-      ASSETS: {
-        fetch: async () => new Response("Not found", { status: 404 }),
-      },
-    },
-    {
-      waitUntil() {},
-      passThroughOnException() {},
-    },
+    new Request(`http://localhost${path}`, { headers: { accept: "text/html" } }),
+    { ASSETS: { fetch: async () => new Response("Not found", { status: 404 }) } },
+    { waitUntil() {}, passThroughOnException() {} },
   );
 }
 
-test("server-renders the starter loading skeleton", async () => {
+test("renderiza o painel no servidor", async () => {
   const response = await render();
   assert.equal(response.status, 200);
   assert.match(response.headers.get("content-type") ?? "", /^text\/html\b/i);
 
   const html = await response.text();
-  assert.match(html, developmentPreviewMeta);
-  assert.match(html, /<title>Your site is taking shape<\/title>/i);
-  assert.match(html, /Building your site/);
-  assert.match(html, /Your site is taking shape/);
-  assert.match(
-    html,
-    /Your first version will appear here automatically when it’s ready\./,
-  );
-  assert.doesNotMatch(html, /Codex/);
-  assert.match(html, /react-loading-skeleton/);
-  assert.match(html, /role="status"/);
+
+  assert.match(html, /<html lang="pt-BR">/);
+  assert.match(html, /<title>Nerdzone Bot Manager<\/title>/i);
+  assert.match(html, /name="description" content="Central para gerenciar contas/);
+
+  // A casca do painel precisa vir pronta do servidor, e não só depois da
+  // hidratação: é ela que o Electron mostra enquanto o JS carrega.
+  assert.match(html, /class="app-shell"/);
+  assert.match(html, /class="sidebar"/);
+  assert.match(html, /<h1>Controle seus <em>bots<\/em><\/h1>/);
+  assert.match(html, /Minecraft 1\.8\.9/);
 });
 
-test("keeps the loading skeleton scoped and disposable", async () => {
-  const [preview, css, page, layout, packageJson, files] = await Promise.all([
-    readFile(new URL("SkeletonPreview.tsx", previewRoot), "utf8"),
-    readFile(new URL("preview.css", previewRoot), "utf8"),
-    readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
-    readFile(new URL("../app/layout.tsx", import.meta.url), "utf8"),
-    readFile(new URL("../package.json", import.meta.url), "utf8"),
-    readdir(previewRoot),
-  ]);
+test("sem serviço no ar, o painel mostra o estado desconectado", async () => {
+  const html = await (await render()).text();
 
-  assert.deepEqual(files.sort(), ["SkeletonPreview.tsx", "preview.css"]);
-  assert.match(preview, /from "react-loading-skeleton"/);
-  assert.match(preview, /baseColor="#eceae7"/);
-  assert.match(preview, /highlightColor="#f9f8f6"/);
-  assert.match(preview, /duration=\{2\.8\}/);
-  assert.match(preview, /sites-skeleton-search-placeholder/);
-  assert.match(packageJson, /"react-loading-skeleton": "3\.5\.0"/);
+  // Durante o build não há bot-service escutando em 3100, então o painel tem
+  // de indicar isso em vez de fingir que está conectado.
+  assert.match(html, /SEM API/);
+  assert.match(html, /Desconectado/);
+  assert.doesNotMatch(html, /AO VIVO/);
+});
 
-  const shellIndex = preview.indexOf('className="sites-skeleton-shell"');
-  const statusIndex = preview.indexOf('className="sites-skeleton-status"');
-  assert.ok(shellIndex >= 0 && statusIndex > shellIndex);
-  assert.match(css, /position:\s*fixed/);
-  assert.match(css, /inset:\s*0/);
-  assert.match(css, /opacity:\s*0\.52/);
-  assert.match(css, /prefers-reduced-motion:\s*reduce/);
-  assert.doesNotMatch(css, /#020617|canvas|pets|progress/i);
-  assert.doesNotMatch(
-    preview,
-    /loading-spinner|status-mark|status-progress|canvas|cookie|random/i,
-  );
+test("nao sobrou nada do template site-creator", async () => {
+  const html = await (await render()).text();
 
-  assert.match(page, /export const metadata:\s*Metadata/);
-  assert.match(page, /"codex-preview": "development"/);
-  assert.match(page, /<SkeletonPreview \/>/);
-  assert.match(layout, /title:\s*"Starter Project"/);
-  assert.doesNotMatch(layout, /codex-preview|_sites-preview|themeColor|\bViewport\b/);
-  assert.doesNotMatch(css, /(^|\s)(html|body)\s*\{/m);
+  assert.doesNotMatch(html, /react-loading-skeleton/);
+  assert.doesNotMatch(html, /Your site is taking shape/i);
+  assert.doesNotMatch(html, /codex-preview/i);
+  assert.doesNotMatch(html, /Starter Project/i);
+});
 
-  await assert.rejects(
-    access(new URL("public/_sites-preview", templateRoot)),
+test("credenciais e proxies reais nao entram no Git", () => {
+  const tracked = execFileSync("git", ["ls-files"], { cwd: repoRoot, encoding: "utf8" })
+    .split("\n")
+    .filter(Boolean);
+
+  // A regra mais importante do projeto: só os .example.json são versionados.
+  for (const privado of [
+    "bot-service/config/accounts.json",
+    "bot-service/config/proxies.json",
+    "bot-service/config/server.json",
+  ]) {
+    assert.ok(!tracked.includes(privado), `${privado} nao pode estar versionado`);
+  }
+
+  for (const exemplo of [
+    "bot-service/config/accounts.example.json",
+    "bot-service/config/proxies.example.json",
+  ]) {
+    assert.ok(tracked.includes(exemplo), `${exemplo} deveria estar versionado`);
+  }
+
+  assert.ok(
+    !tracked.some((file) => file === ".env" || file.startsWith(".env.")),
+    "nenhum .env pode estar versionado",
   );
 });

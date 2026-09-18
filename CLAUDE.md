@@ -63,19 +63,25 @@ npm run dev        # mesmo processo com --watch
 
 ## Estado das verificações
 
-Antes de atribuir uma falha à sua mudança, compare com o estado conhecido:
+Todas passam hoje; se alguma quebrar, é regressão da sua mudança:
 
 - `npm run build` passa.
-- `npm test` **falha hoje**: `tests/rendered-html.test.mjs` sobrou do template
-  `site-creator-vinext-starter` e verifica um `app/_sites-preview/` que não
-  existe mais neste projeto. Não é regressão do painel.
-- `npm run lint` **falha hoje** com 7 erros e 2 avisos pré-existentes, a maioria
-  `require()` em `electron/main.cjs` e `react-hooks/set-state-in-effect` em
-  `app/page.tsx`.
+- `npm test` passa: roda o build e depois 4 testes em `tests/`. Eles cobrem a
+  renderização do painel no servidor, o estado "SEM API" quando o serviço não
+  está no ar, a ausência de restos do template `site-creator-vinext-starter` e
+  a regra de não versionar `accounts.json`, `proxies.json`, `server.json` nem
+  `.env`.
+- `npm run lint` passa sem erros. Resta 1 aviso conhecido:
+  `purchaseAndDeliver` em `bot-service/src/server.mjs:884` está definido e
+  nunca chamado. É lógica de compra no mercado; foi deixada de propósito para
+  alguém decidir se liga ou remove.
 - `npx tsc --noEmit` acusa tipos do Cloudflare Workers ausentes
   (`cloudflare:workers`, `D1Database`, `Fetcher`). A configuração do Cloudflare
   mora dentro de `vite.config.ts`, não há arquivo do Wrangler e portanto
   `wrangler types` não roda. O build é a verificação de tipos efetiva.
+
+O GitHub Actions roda lint, build e testes a cada push e pull request
+(`.github/workflows/ci.yml`).
 
 ## Ambiente
 
