@@ -54,3 +54,6 @@ next-env.d.ts
 /*.log
 **/*.log
 /desktop-*/
+
+# configuracao pessoal do Claude Code (a do projeto fica em .claude/settings.json)
+/.claude/settings.local.json

@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "permissions": {
+    "allow": [
+      "Bash(npm install)",
+      "Bash(npm install --prefix bot-service)",
+      "Bash(npm ci)",
+      "Bash(npm run build)",
+      "Bash(npm run lint)",
+      "Bash(npm test)",
+      "Bash(npm run db:generate)",
+      "Bash(npm outdated)",
+      "Bash(npm audit)",
+      "Bash(npx tsc --noEmit)",
+      "Bash(node --check *)",
+      "Bash(node --test *)",
+      "Bash(git status *)",
+      "Bash(git diff *)",
+      "Bash(git log *)",
+      "Bash(git show *)",
+      "Bash(git branch *)",
+      "Bash(git switch *)",
+      "Bash(git checkout *)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git fetch *)",
+      "Bash(git pull *)",
+      "Bash(git push *)"
+    ],
+    "deny": [
+      "Read(bot-service/config/accounts.json)",
+      "Read(bot-service/config/proxies.json)",
+      "Read(bot-service/config/server.json)",
+      "Read(bot-service/data/**)",
+      "Read(.env)",
+      "Read(.env.*)",
+      "Edit(dist/**)"
+    ]
+  }
+}
