@@ -11,7 +11,7 @@
     "dev": "node --env-file=.env --watch src/server.mjs"
   },
   "dependencies": {
-    "mineflayer": "^4.33.0",
-    "socks": "^2.8.9"
+    "mineflayer": "^4.39.0",
+    "socks": "^2.8.10"
   }
 }

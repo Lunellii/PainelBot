@@ -1,0 +1,32 @@
+name: CI
+
+# Push so na main: num branch com PR aberto, o gatilho pull_request ja cobre
+# cada envio, e deixar os dois amplos faz o mesmo commit rodar duas vezes.
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  verificar:
+    name: Lint e testes
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      # "npm test" ja roda "vinext build" antes dos testes, e os testes
+      # importam o worker gerado em dist/, entao o build e verificado junto.
+      - name: Build e testes
+        run: npm test

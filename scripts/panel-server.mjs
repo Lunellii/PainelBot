@@ -1,6 +1,6 @@
 import { createServer } from "node:http";
 import { readFile, stat } from "node:fs/promises";
-import { extname, join, normalize } from "node:path";
+import { extname, normalize } from "node:path";
 import worker from "../dist/server/index.js";
 
 const root = new URL("../dist/client/", import.meta.url);

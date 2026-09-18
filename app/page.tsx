@@ -175,28 +175,39 @@ export default function Home() {
     }
   }, []);
 
-  const limparErros = useCallback(async (manual = false) => {
-    try {
-      const response = await fetch("/api/accounts/errors/clear", { method: "POST" });
-      const data = await response.json();
-      if (manual) setNotice(data.cleared ? `${data.cleared} erro(s) antigo(s) limpo(s)` : "Nenhum erro de conta desconectada para limpar");
-      window.setTimeout(refresh, 200);
-    } catch {
-      if (manual) setNotice("Falha ao limpar os erros");
-    }
+  // Só a chamada ao serviço, sem tocar em estado: assim o efeito de abertura
+  // pode usá-la sem provocar renderização em cascata.
+  const pedirLimpezaDeErros = useCallback(async () => {
+    const response = await fetch("/api/accounts/errors/clear", { method: "POST" });
+    const data = await response.json();
+    window.setTimeout(refresh, 200);
+    return data;
   }, [refresh]);
+
+  // Versão do botão, que além de limpar avisa o que aconteceu.
+  const limparErros = useCallback(async () => {
+    try {
+      const data = await pedirLimpezaDeErros();
+      setNotice(data.cleared ? `${data.cleared} erro(s) antigo(s) limpo(s)` : "Nenhum erro de conta desconectada para limpar");
+    } catch {
+      setNotice("Falha ao limpar os erros");
+    }
+  }, [pedirLimpezaDeErros]);
 
   useEffect(() => {
     // Ao abrir o painel, apaga o erro de quem já está desconectado: são restos
     // da sessão anterior, já que o serviço não reinicia junto com o app.
-    limparErros().finally(refresh);
+    pedirLimpezaDeErros().catch(() => {}).finally(refresh);
     const timer = window.setInterval(refresh, 3000);
     return () => window.clearInterval(timer);
-  }, [refresh, limparErros]);
+  }, [refresh, pedirLimpezaDeErros]);
 
   // Inventário, chat e mercado só trafegam enquanto a conta está aberta.
   useEffect(() => {
-    if (!activeId) { setActiveDetail(null); return; }
+    // Sem limpar o detalhe aqui: o cálculo de `active` abaixo já descarta o
+    // que pertence a outra conta, e zerar no efeito forçava uma renderização
+    // extra a cada fechamento.
+    if (!activeId) return;
     let alive = true;
     const load = async () => {
       try {
@@ -457,7 +468,7 @@ export default function Home() {
           <section className="error-triage">
             <div className="triage-head">
               <div><p className="eyebrow">TRIAGEM DE FALHAS</p><strong>{errors} conta(s) com problema, em {triage.length} causa(s)</strong></div>
-              <div className="triage-tools"><button className="ghost" onClick={() => limparErros(true)}>Limpar erros antigos</button><button className="ghost" onClick={testProxies} disabled={busy}>Testar proxies</button></div>
+              <div className="triage-tools"><button className="ghost" onClick={() => limparErros()}>Limpar erros antigos</button><button className="ghost" onClick={testProxies} disabled={busy}>Testar proxies</button></div>
             </div>
             {triage.map((group) => (
               <div className={`triage-row kind-${group.id}`} key={group.id}>
